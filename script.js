@@ -50,8 +50,46 @@ function shuffleArray(array) {
 	}
 }
 
+// Tone.js 설정
+const synth = new Tone.Synth().toDestination();
+const drum = new Tone.MembraneSynth().toDestination();
+
+function playSound(frequency, duration) {
+	synth.triggerAttackRelease(frequency, duration);
+}
+
+function playDrum(duration) {
+	drum.triggerAttackRelease('C1', duration);
+}
+
+// 게임 사운드용 함수
+function gameSoundTimer() {
+	let gameTime = limitedTime + 1;
+	// 기존 스케줄 취소
+	Tone.Transport.cancel();
+
+	Tone.Transport.scheduleRepeat((time) => {
+		gameTime--;
+		if (gameTime > 6) {
+			playDrum('8n'); // 시간 경과 드럼 소리
+		} else if (gameTime > 0) {
+			playDrum('8n');
+			playSound('C5', '8n');
+		} else {
+			Tone.Transport.cancel();
+			playSound('C4', '8n'); // 게임 종료 드럼 소리
+		}
+	}, '1s');
+
+	// 타이머 시작
+	Tone.Transport.start();
+}
+
 // 게임 설정 후 시작
-startGameButton.addEventListener('click', () => {
+startGameButton.addEventListener('click', async () => {
+	await Tone.start(); // Tone.js 시작
+	playSound('A5', '8n'); // 게임 시작 사운드
+
 	const movieCount = parseInt(movieCountInput.value);
 	const selectedType = document.querySelector(
 		'input[name="questionType"]:checked'
@@ -87,6 +125,7 @@ function startGame() {
 	pauseButton.textContent = '일시 정지';
 	pauseButton.classList.remove('hidden');
 
+	gameSoundTimer();
 	showTerm(selectedTerms[currentIndex]);
 	startTimer();
 	updateProgress();
@@ -194,6 +233,7 @@ initScoreButton.addEventListener('click', () => {
 
 // 정답 보기 버튼 클릭 시 정답 표시
 showAnswerButton.addEventListener('click', () => {
+	Tone.Transport.cancel(); // 게임 사운드 취소
 	showAnswer();
 });
 
@@ -240,8 +280,11 @@ subtractScoreTeamBButton.addEventListener('click', () => {
 nextButton.addEventListener('click', () => {
 	currentIndex++;
 	if (currentIndex < selectedTerms.length) {
+		Tone.Transport.start();
+		playSound('A5', '8n');
 		startGame();
 	} else {
+		Tone.Transport.cancel();
 		showGameResult();
 	}
 });
@@ -249,6 +292,7 @@ nextButton.addEventListener('click', () => {
 // 게임 종료 시 승리 팀 또는 무승부 표시
 function showGameResult() {
 	clearInterval(timer);
+	playEndGameSound();
 	let title = '';
 	let message = '';
 	if (scoreTeamA > scoreTeamB) {
@@ -275,10 +319,27 @@ closeModalButton.addEventListener('click', () => {
 
 // 일시정지 버튼 클릭 시 타이머 일시정지/재개
 pauseButton.addEventListener('click', () => {
-	isPaused = !isPaused;
 	if (isPaused) {
-		pauseButton.textContent = '재개';
-	} else {
+		Tone.Transport.start();
 		pauseButton.textContent = '일시 정지';
+	} else {
+		Tone.Transport.pause();
+		pauseButton.textContent = '재개';
 	}
+	isPaused = !isPaused;
 });
+
+// 게임 종료 사운드
+function playEndGameSound() {
+	const synth = new Tone.Synth().toDestination();
+	const now = Tone.now();
+
+	// 빠른 템포의 멜로디
+	synth.triggerAttackRelease("C4", "16n", now);
+	synth.triggerAttackRelease("E4", "16n", now + 0.1);
+	synth.triggerAttackRelease("G4", "16n", now + 0.2);
+	synth.triggerAttackRelease("C5", "16n", now + 0.3);
+	synth.triggerAttackRelease("G4", "16n", now + 0.4);
+	synth.triggerAttackRelease("E4", "16n", now + 0.5);
+	synth.triggerAttackRelease("C4", "16n", now + 0.6);
+}
